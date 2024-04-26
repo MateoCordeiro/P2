@@ -33,7 +33,7 @@ int main(int argc, char **argv){
         client_address_size,
         userInput,
         ID, 
-        cID;
+        cID,
         score, 
         cscore;
     
