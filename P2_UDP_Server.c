@@ -11,261 +11,290 @@
 #include <stdio.h>
 #include <string.h>
 #include <netdb.h>
+
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
-// Struct for student information
+//student struct for database
 struct Student {
-    int id;
-    char firstName[10];
-    char lastName[10];
-    int grade;
+    
+    int ID;
+    char Fname[10];
+    char Lname[10];
+    int score;
 };
 
-int main(int argc, char *argv[]) {
-    int sock, menuChoice, studentID, studentScore;
+int main(int argc, char **argv){
+
+    int s,
+        namelen,
+        client_address_size,
+        userInput,
+        ID, 
+        cID;
+        score, 
+        cscore;
     
-    struct sockaddr_in serverAddr, clientAddr;
-    socklen_t clientSize = sizeof(clientAddr);  // Correct data type for client address length
-    
-    char recvBuffer[2048], 
-         sendBuffer[1024], 
-         tempFirstName[10], 
-         tempLastName[10];
+    struct sockaddr_in server, 
+        client;
 
-    uint32_t receivedInt, fnameLength, lnameLength;
+    char buffer[2048],
+        msg[1024],
+        Fname[10],
+        Lname[10];
 
-    // Create a UDP socket
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) {
-        perror("Socket creation failed");
-        return -1;
+    uint32_t num, 
+        FnameSize, 
+        LnameSize;
+
+    /* Create a datagram socket in the internet domain and use the UDP protocol. */
+    s = socket(AF_INET, SOCK_DGRAM, 0);
+
+    server.sin_family = AF_INET; /* Server is in Internet Domain */
+    server.sin_port = htons(8000); /* port */
+    server.sin_addr.s_addr = INADDR_ANY; /* Server's Internet Address */
+
+    bind(s, (struct sockaddr *)&server, sizeof(server));
+    client_address_size = sizeof(client);  
+
+    // Create a text file to serve as student database
+    FILE *databaseFile = fopen("student_database.txt", "a+");
+
+    if (databaseFile == NULL)
+    {
+        perror("Error opening the database file");
+        exit(EXIT_FAILURE);
     }
 
-    serverAddr.sin_family = AF_INET;  // Internet Domain
-    serverAddr.sin_port = htons(8000);  // Server port
-    serverAddr.sin_addr.s_addr = INADDR_ANY;  // Any IP address
+    // communication starts from here
 
-    if (bind(sock, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-        perror("Bind failed");
-        close(sock);
-        return -1;
-    }
+    // receive an integer from the client
+    recvfrom(s, &num, sizeof(num), 0, (struct sockaddr *)&client, &client_address_size);
+    num = ntohl(num);
+    printf("Integer received: %d\n", ntohl(num));   
 
-    // Create or open the student database file
-    FILE *studentDB = fopen("students_db.txt", "a+");
-    if (!studentDB) {
-        perror("Failed to open student database");
-        close(sock);
-        return -1;
-    }
+    // send a reply message to the client
+    strcpy(msg, "Integer received");
+    sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
 
-    // Start communication with the client
-    recvfrom(sock, &receivedInt, sizeof(receivedInt), 0, (struct sockaddr *)&clientAddr, &clientSize);
-    receivedInt = ntohl(receivedInt);  // Convert to host byte order
-    printf("Received integer: %d\n", receivedInt);
+    // receive menu option from the client
+    recvfrom(s, &userInput, sizeof(userInput), 0, (struct sockaddr *)&client, &client_address_size);
+    printf("User selection: %d\n",ntohl(userInput)); 
 
-    strcpy(sendBuffer, "Integer received");
-    sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
+    // send a reply message to the client
+    strcpy(msg, "User selection received");
+    sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
 
-    recvfrom(sock, &menuChoice, sizeof(menuChoice), 0, (struct sockaddr *)&clientAddr, &clientSize);
-    printf("User menu choice: %d\n", ntohl(menuChoice));
+    // perform command
+    while (userInput != 6)
+    {
+        if (ntohl(userInput) == 1) // add student to database
+        {
+            // receive ID from the client
+            recvfrom(s, &ID, sizeof(ID), 0, (struct sockaddr *)&client, &client_address_size);
+            printf("ID: %d\n",ntohl(ID));   
+            strcpy(msg, "ID received");
+            sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
 
-    strcpy(sendBuffer, "Menu choice received");
-    sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
+            // receive Fname from the client
+            recvfrom(s, &FnameSize, sizeof(FnameSize), 0, (struct sockaddr *)&client, &client_address_size);
+            recvfrom(s, Fname, FnameSize, 0, (struct sockaddr *)&client, &client_address_size);
+            Fname[FnameSize] = '\0';
+            printf("Fname: %s\n",Fname);   
+            strcpy(msg, "Fname received");
+            sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
 
-    while (ntohl(menuChoice) != 6) {  // 6 is the exit option
-        switch (ntohl(menuChoice)) {
-            case 1:  // Add student to the database
-                // Receive student ID from the client
-                recvfrom(sock, &studentID, sizeof(studentID), 0, (struct sockaddr *)&clientAddr, &clientSize);
-                studentID = ntohl(studentID);
-                printf("Student ID: %d\n", studentID);
+            // receive Lname from the client
+            recvfrom(s, &LnameSize, sizeof(LnameSize), 0, (struct sockaddr *)&client, &client_address_size);
+            recvfrom(s, Lname, LnameSize, 0, (struct sockaddr *)&client, &client_address_size);
+            Lname[LnameSize] = '\0';
+            printf("Lname: %s\n",Lname);   
+            strcpy(msg, "Lname received");
+            sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
 
-                strcpy(sendBuffer, "ID received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
+            // receive score from the client
+            recvfrom(s, &score, sizeof(score), 0, (struct sockaddr *)&client, &client_address_size);
+            printf("score: %d\n",ntohl(score));   
+            strcpy(msg, "score received");
+            sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
 
-                // Receive the student's first name
-                recvfrom(sock, &fnameLength, sizeof(fnameLength), 0, (struct sockaddr *)&clientAddr, &clientSize);
-                recvfrom(sock, tempFirstName, fnameLength, 0, (struct sockaddr *)&clientAddr, &clientSize);
-                tempFirstName[fnameLength] = '\0';
+            // write student into the database file
+            struct Student newStudent;
+            newStudent.ID = ntohl(ID);
+            strncpy(newStudent.Fname, Fname, sizeof(newStudent.Fname));
+            strncpy(newStudent.Lname, Lname, sizeof(newStudent.Lname));
+            newStudent.score = ntohl(score);
+            fprintf(databaseFile, "%d %s %s %d\n", newStudent.ID, newStudent.Fname, newStudent.Lname, newStudent.score);
+            fflush(databaseFile);
 
-                printf("First name: %s\n", tempFirstName);
+            // send a reply message to the client
+            strcpy(msg, "New student information has been added to the database");
+            sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
+        }
+        else if (ntohl(userInput) == 2) // display student based on ID match
+        {
+            // receive ID from the client
+            recvfrom(s, &ID, sizeof(ID), 0, (struct sockaddr *)&client, &client_address_size);
+            cID = ntohl(ID);
+            printf("ID: %d\n", cID);
+            strcpy(msg, "ID received");
+            sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
 
-                strcpy(sendBuffer, "First name received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
-
-                // Receive the student's last name
-                recvfrom(sock, &lnameLength, sizeof(lnameLength), 0, (struct sockaddr *)&clientAddr, &clientSize);
-                recvfrom(sock, tempLastName, lnameLength, 0, (struct sockaddr *)&clientAddr, &clientSize);
-                tempLastName[lnameLength] = '\0';
-
-                printf("Last name: %s\n", tempLastName);
-
-                strcpy(sendBuffer, "Last name received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
-
-                // Receive the student's score
-                recvfrom(sock, &studentScore, sizeof(studentScore), 0, (struct sockaddr *)&clientAddr, &clientSize);
-                studentScore = ntohl(studentScore);
-
-                printf("Score: %d\n", studentScore);
-
-                strcpy(sendBuffer, "Score received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
-
-                // Save the student information in the database
-                struct Student newStudent;
-                newStudent.id = studentID;
-                strncpy(newStudent.firstName, tempFirstName, sizeof(newStudent.firstName));
-                strncpy(newStudent.lastName, tempLastName, sizeof(newStudent.lastName));
-                newStudent.grade = studentScore;
-
-                fprintf(studentDB, "%d %s %s %d\n", newStudent.id, newStudent.firstName, newStudent.lastName, newStudent.grade);
-                fflush(studentDB);
-
-                strcpy(sendBuffer, "Student added to the database");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
-                break;
-
-            case 2:  // Display student by ID
-                // Receive the student ID to be searched
-                recvfrom(sock, &studentID, sizeof(studentID), 0, (struct sockaddr *)&clientAddr, &clientSize);
-                studentID = ntohl(studentID);
-
-                printf("Received student ID: %d\n", studentID);
-
-                strcpy(sendBuffer, "ID received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
-
-                // Search the student database for the given ID
-                fseek(studentDB, 0, SEEK_SET);
-                struct Student retrievedStudent;
-                int studentFound = 0;
-
-                while (fscanf(studentDB, "%d %s %s %d", &retrievedStudent.id, retrievedStudent.firstName, retrievedStudent.lastName, &retrievedStudent.grade) == 4) {
-                    if (retrievedStudent.id == studentID) {
-                        studentFound = 1;
-                        break;
-                    }
+            // search for the student with matching ID 
+            fseek(databaseFile, 0, SEEK_SET);
+            struct Student currentStudent;
+            int targetID = cID;
+            int found = 0;
+            while (fscanf(databaseFile, "%d %s %s %d", &currentStudent.ID, currentStudent.Fname, currentStudent.Lname, &currentStudent.score) == 4)
+            {
+                if (currentStudent.ID == targetID)
+                {
+                    found = 1;
+                    break;
                 }
+            }
 
-                if (studentFound) {
-                    sendto(sock, &retrievedStudent, sizeof(retrievedStudent), 0, (struct sockaddr *)&clientAddr, &clientSize);
-                } else {
-                    struct Student notFoundStudent;
-                    notFoundStudent.id = -1;
-                    sendto(sock, &notFoundStudent, sizeof(notFoundStudent), 0, (struct sockaddr *)&clientAddr, clientSize);
+            // send student information or a flag indicating not found
+            if (found)
+            {
+                sendto(s, &currentStudent, sizeof(currentStudent), 0, (struct sockaddr *)&client, sizeof(client));
+            }
+            else
+            {
+                struct Student notFoundStudent;
+                notFoundStudent.ID = -1;
+                sendto(s, &notFoundStudent, sizeof(notFoundStudent), 0, (struct sockaddr *)&client, sizeof(client));
+            }
+        }
+        else if (ntohl(userInput) == 3) // display all students who have a score above score sent from client
+        {
+            // receive score from the client
+            recvfrom(s, &score, sizeof(score), 0, (struct sockaddr *)&client, &client_address_size);
+            printf("score: %d\n",ntohl(score));   
+            strcpy(msg, "score received");
+            sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
+
+            // send information of all those students found to the client
+            struct Student currentStudent;
+            int targetScore = ntohl(score);
+            int found = 0;
+            fseek(databaseFile, 0, SEEK_SET);
+
+            while (fscanf(databaseFile, "%d %s %s %d", &currentStudent.ID, currentStudent.Fname, currentStudent.Lname, &currentStudent.score) == 4)
+            {
+                if (currentStudent.score > targetScore)
+                {
+                    sendto(s, &currentStudent, sizeof(currentStudent), 0, (struct sockaddr *)&client, sizeof(client));
+                    found = 1;
                 }
-                break;
+            }
 
-            case 3:  // Display students with scores above a certain value
-                recvfrom(sock, &studentScore, sizeof(studentScore), 0, (struct sockaddr *)&clientAddr, &clientSize);
-                studentScore = ntohl(studentScore);
-
-                printf("Received score threshold: %d\n", studentScore);
-
-                strcpy(sendBuffer, "Score received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
-
-                int anyMatches = 0;
-                struct Student currentStudent;
-
-                fseek(studentDB, 0, SEEK_SET);
-
-                while (fscanf(studentDB, "%d %s %s %d", &currentStudent.id, currentStudent.firstName, currentStudent lastName, &currentStudent.grade) == 4) {
-                    if (currentStudent.grade > studentScore) {
-                        sendto(sock, &currentStudent, sizeof(currentStudent), 0, (struct sockaddr *)&clientAddr, clientSize);
-                        anyMatches = 1;
-                    }
-                }
-
-                if (!anyMatches) {
-                    struct Student noMatch;
-                    noMatch.id = -2;
-                    sendto(sock, &noMatch, sizeof(noMatch), 0, (struct sockaddr *)&clientAddr, clientSize);
-                }
-
-                break;
-
-            case 4:  // Display all students
-                fseek(studentDB, 0, SEEK_SET);
-                while (fscanf(studentDB, "%d %s %s %d", &currentStudent.id, currentStudent.firstName, currentStudent.lastName, &currentStudent.grade) == 4) {
-                    sendto(sock, &currentStudent, sizeof(currentStudent), 0, (struct sockaddr *)&clientAddr, clientSize);
-                }
-
+            if (!found)
+            {
+                struct Student noDataFlag;
+                noDataFlag.ID = -2;
+                sendto(s, &noDataFlag, sizeof(noDataFlag), 0, (struct sockaddr *)&client, sizeof(client));
+            }
+            else
+            {
                 struct Student endFlag;
-                endFlag.id = -1;
-                sendto(sock, &endFlag, sizeof(endFlag), 0, (struct sockaddr *)&clientAddr, clientSize);
-                break;
+                endFlag.ID = -1;
+                sendto(s, &endFlag, sizeof(endFlag), 0, (struct sockaddr *)&client, sizeof(client));
+            }
+        }
+        else if (ntohl(userInput) == 4) // display all students in database
+        {
+            // send information of all the students
+            struct Student currentStudent;
+            fseek(databaseFile, 0, SEEK_SET);
+            while (fscanf(databaseFile, "%d %s %s %d", &currentStudent.ID, currentStudent.Fname, currentStudent.Lname, &currentStudent.score) == 4)
+            {
+                sendto(s, &currentStudent, sizeof(currentStudent), 0, (struct sockaddr *)&client, sizeof(client));
+            }
 
-            case 5:  // Delete student based on ID
-                recvfrom(sock, &studentID, sizeof(studentID), 0, (struct sockaddr *)&clientAddr, clientSize);
-                studentID = ntohl(studentID);
+            struct Student endFlag;
+            endFlag.ID = -1;
+            sendto(s, &endFlag, sizeof(endFlag), 0, (struct sockaddr *)&client, sizeof(client));
+        }
+        else if (ntohl(userInput) == 5) // delete student based on ID
+        {
+            // receive ID from the client
+            recvfrom(s, &ID, sizeof(ID), 0, (struct sockaddr *)&client, &client_address_size);
+            printf("ID: %d\n",ntohl(ID));   
+            // send a reply message to the client
+            strcpy(msg, "ID received");
+            sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
 
-                printf("Received ID to delete: %d\n", studentID);
+            // create a temporary file to store the updated database
+            FILE *tempFile = fopen("temp_database.txt", "w");
+            if (tempFile == NULL)
+            {
+                perror("Error opening the temporary file");
+                exit(EXIT_FAILURE);
+            }
 
-                strcpy(sendBuffer, "ID received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
-
-                // Temporary file for database update
-                FILE *tempDB = fopen("temp_db.txt", "w");
-                if (!tempDB) {
-                    perror("Could not open temp database");
-                    close(sock);
-                    return -1;
+            // Iterate through the database and copy all students except the one to be deleted to the temporary file
+            struct Student currentStudent;
+            int targetID = ntohl(ID);
+            int found = 0;
+            
+            fseek(databaseFile, 0, SEEK_SET);
+            while (fscanf(databaseFile, "%d %s %s %d", &currentStudent.ID, currentStudent.Fname, currentStudent.Lname, &currentStudent.score) == 4)
+            {
+                if (currentStudent.ID == targetID)
+                {
+                    found = 1;
+                    continue;
                 }
 
-                fseek(studentDB, 0, SEEK_SET);
+                fprintf(tempFile, "%d %s %s %d\n", currentStudent.ID, currentStudent.Fname, currentStudent.Lname, currentStudent.score);
+            }
 
-                int found = 0;
-                while (fscanf(studentDB, "%d %s %s %d", &currentStudent.id, currentStudent.firstName, currentStudent.lastName, &currentStudent.grade) == 4) {
-                    if (currentStudent.id == studentID) {
-                        found = 1;
-                        continue;  // Don't copy the deleted student
-                    }
-                    fprintf(tempDB, "%d %s %s %d\n", currentStudent.id, currentStudent.firstName, currentStudent lastName, currentStudent.grade);
-                }
+            fclose(tempFile);
+            fclose(databaseFile);
 
-                fclose(tempDB);
-                fclose(studentDB);
+            // Remove the original database file
+            remove("student_database.txt");
 
-                // Replace the old database with the updated one
-                remove("students_db.txt");
-                if (rename("temp_db.txt", "students_db.txt") != 0) {
-                    perror("Could not rename temp database");
-                    close(sock);
-                    return -1;
-                }
+            // Rename the temporary file to the original database file
+            if (rename("temp_database.txt", "student_database.txt") != 0)
+            {
+                perror("Error renaming the temporary file");
+                exit(EXIT_FAILURE);
+            }
 
-                studentDB = fopen("students_db.txt", "a+");
-                if (!studentDB) {
-                    perror("Failed to reopen student database");
-                    close(sock);
-                    return -1;
-                }
+            // Open the updated database file for further use
+            databaseFile = fopen("student_database.txt", "a+");
 
-                if (found) {
-                    strcpy(sendBuffer, "Student deleted from the database");
-                } else {
-                    strcpy(sendBuffer, "Student with given ID not found");
-                }
+            if (databaseFile == NULL)
+            {
+                perror("Error opening the database file");
+                exit(EXIT_FAILURE);
+            }
 
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
-                break;
+            // Send a reply message to the client
+            if (found)
+                strcpy(msg, "Student information deleted from the database");
+            else
+                strcpy(msg, "Student with that ID was not found");
+
+            sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
         }
 
-        recvfrom(sock, &menuChoice, sizeof(menuChoice), 0, (struct sockaddr *)&clientAddr, &clientSize);
-        printf("User's next menu choice: %d\n", ntohl(menuChoice));
+        // receive menu option for next loop
+        recvfrom(s, &userInput, sizeof(userInput), 0, (struct sockaddr *)&client, &client_address_size);
+        printf("User selection: %d\n",ntohl(userInput)); 
 
-        strcpy(sendBuffer, "Next menu choice received");
-        sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
+        // send a reply message to the client
+        strcpy(msg, "User selection received");
+        sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
     }
 
-    fclose(studentDB);
-    close(sock);
+    //remove("student_database.txt");
+    fclose(databaseFile);
+    close(s);
 
     return 0;
 }
