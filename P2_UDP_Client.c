@@ -15,6 +15,7 @@
 #include <netdb.h>
 
 int printMenu();
+
 void sendCommand(int userInput);
 
 int s, server_address_size;
@@ -33,7 +34,7 @@ struct Student {
     char Fname[10];
     char Lname[10];
     int score;
-}
+};
 
 int printMenu() {
     
