@@ -44,19 +44,18 @@ struct Student {
 };
 
 int printMenu() {
-    
+   
     int userChoice;
 
-    printf("\n\n
-        Student Database Options Menu\n
-        =============================\n
-        1. add(ID, Fname, Lname, score): this request adds new student information to the database.\n
-        2. display(ID): this request sends the ID of a student to the server, and the server returns the student's information to the client.\n
-        3. display(score): this request sends a score to the server, and the server returns the information of all students whose scores are above the sent score to the client.\n
-        4. display_all: this request displays the information of all the students currently in the database.\n
-        5. delete(ID): this request deletes the student entry with that ID from the database.\n
-        6. exit: this request terminates the program.\n\n");
-    
+    printf("\n\nStudent Database Options Menu\n");
+    printf("~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*\n");
+    printf("1. add(ID, Fname, Lname, score): this request adds new student information to the database.\n");
+    printf("2. display(ID): this request sends the ID of a student to the server, and the server returns the student's information to the client.\n");
+    printf("3. display(score): this request sends a score to the server, and the server returns the information of all students whose scores are above the sent score to the client.\n");
+    printf("4. display_all: this request displays the information of all the students currently in the database.\n");
+    printf("5. delete(ID): this request deletes the student entry with that ID from the database.\n");
+    printf("6. exit: this request terminates the program.\n\n");
+
     printf("Enter the number associated with the command you wish to perform: ");
     scanf("%d", &userChoice);
 
