@@ -28,9 +28,13 @@ int main(int argc, char *argv[]) {
     int sock, menuChoice, studentID, studentScore;
     
     struct sockaddr_in serverAddr, clientAddr;
-    socklen_t clientSize = sizeof(clientAddr); // Correct data type for client size
+    socklen_t clientSize = sizeof(clientAddr);  // Correct data type for client address length
     
-    char recvBuffer[2048], sendBuffer[1024], tempFirstName[10], tempLastName[10];
+    char recvBuffer[2048], 
+         sendBuffer[1024], 
+         tempFirstName[10], 
+         tempLastName[10];
+
     uint32_t receivedInt, fnameLength, lnameLength;
 
     // Create a UDP socket
@@ -58,19 +62,19 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    // Start communication with client
+    // Start communication with the client
     recvfrom(sock, &receivedInt, sizeof(receivedInt), 0, (struct sockaddr *)&clientAddr, &clientSize);
     receivedInt = ntohl(receivedInt);  // Convert to host byte order
     printf("Received integer: %d\n", receivedInt);
 
     strcpy(sendBuffer, "Integer received");
-    sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
+    sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
 
     recvfrom(sock, &menuChoice, sizeof(menuChoice), 0, (struct sockaddr *)&clientAddr, &clientSize);
     printf("User menu choice: %d\n", ntohl(menuChoice));
 
     strcpy(sendBuffer, "Menu choice received");
-    sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
+    sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
 
     while (ntohl(menuChoice) != 6) {  // 6 is the exit option
         switch (ntohl(menuChoice)) {
@@ -81,9 +85,9 @@ int main(int argc, char *argv[]) {
                 printf("Student ID: %d\n", studentID);
 
                 strcpy(sendBuffer, "ID received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
+                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
 
-                // Receive student's first name
+                // Receive the student's first name
                 recvfrom(sock, &fnameLength, sizeof(fnameLength), 0, (struct sockaddr *)&clientAddr, &clientSize);
                 recvfrom(sock, tempFirstName, fnameLength, 0, (struct sockaddr *)&clientAddr, &clientSize);
                 tempFirstName[fnameLength] = '\0';
@@ -91,17 +95,17 @@ int main(int argc, char *argv[]) {
                 printf("First name: %s\n", tempFirstName);
 
                 strcpy(sendBuffer, "First name received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
+                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
 
-                // Receive student's last name
+                // Receive the student's last name
                 recvfrom(sock, &lnameLength, sizeof(lnameLength), 0, (struct sockaddr *)&clientAddr, &clientSize);
-                recvfrom(sock, tempLastName, lnameLength, 0, (struct sockaddr *)&clientAddr, clientSize);
+                recvfrom(sock, tempLastName, lnameLength, 0, (struct sockaddr *)&clientAddr, &clientSize);
                 tempLastName[lnameLength] = '\0';
 
                 printf("Last name: %s\n", tempLastName);
 
                 strcpy(sendBuffer, "Last name received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
+                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
 
                 // Receive the student's score
                 recvfrom(sock, &studentScore, sizeof(studentScore), 0, (struct sockaddr *)&clientAddr, &clientSize);
@@ -110,7 +114,7 @@ int main(int argc, char *argv[]) {
                 printf("Score: %d\n", studentScore);
 
                 strcpy(sendBuffer, "Score received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
+                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
 
                 // Save the student information in the database
                 struct Student newStudent;
@@ -128,13 +132,13 @@ int main(int argc, char *argv[]) {
 
             case 2:  // Display student by ID
                 // Receive the student ID to be searched
-                recvfrom(sock, &studentID, sizeof(studentID), 0, (struct sockaddr *)&clientAddr, clientSize);
+                recvfrom(sock, &studentID, sizeof(studentID), 0, (struct sockaddr *)&clientAddr, &clientSize);
                 studentID = ntohl(studentID);
 
                 printf("Received student ID: %d\n", studentID);
 
                 strcpy(sendBuffer, "ID received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
+                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
 
                 // Search the student database for the given ID
                 fseek(studentDB, 0, SEEK_SET);
@@ -149,7 +153,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 if (studentFound) {
-                    sendto(sock, &retrievedStudent, sizeof(retrievedStudent), 0, (struct sockaddr *)&clientAddr, clientSize);
+                    sendto(sock, &retrievedStudent, sizeof(retrievedStudent), 0, (struct sockaddr *)&clientAddr, &clientSize);
                 } else {
                     struct Student notFoundStudent;
                     notFoundStudent.id = -1;
@@ -164,14 +168,14 @@ int main(int argc, char *argv[]) {
                 printf("Received score threshold: %d\n", studentScore);
 
                 strcpy(sendBuffer, "Score received");
-                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
+                sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
 
                 int anyMatches = 0;
                 struct Student currentStudent;
 
                 fseek(studentDB, 0, SEEK_SET);
 
-                while (fscanf(studentDB, "%d %s %s %d", &currentStudent.id, currentStudent.firstName, currentStudent.lastName, &currentStudent.grade) == 4) {
+                while (fscanf(studentDB, "%d %s %s %d", &currentStudent.id, currentStudent.firstName, currentStudent lastName, &currentStudent.grade) == 4) {
                     if (currentStudent.grade > studentScore) {
                         sendto(sock, &currentStudent, sizeof(currentStudent), 0, (struct sockaddr *)&clientAddr, clientSize);
                         anyMatches = 1;
@@ -198,7 +202,7 @@ int main(int argc, char *argv[]) {
                 break;
 
             case 5:  // Delete student based on ID
-                recvfrom(sock, &studentID, sizeof(studentID), 0, (struct sockaddr *)&clientAddr, &clientSize);
+                recvfrom(sock, &studentID, sizeof(studentID), 0, (struct sockaddr *)&clientAddr, clientSize);
                 studentID = ntohl(studentID);
 
                 printf("Received ID to delete: %d\n", studentID);
@@ -215,15 +219,14 @@ int main(int argc, char *argv[]) {
                 }
 
                 fseek(studentDB, 0, SEEK_SET);
-                int targetID = studentID;
-                int isDeleted = 0;
 
+                int found = 0;
                 while (fscanf(studentDB, "%d %s %s %d", &currentStudent.id, currentStudent.firstName, currentStudent.lastName, &currentStudent.grade) == 4) {
-                    if (currentStudent.id == targetID) {
-                        isDeleted = 1;
+                    if (currentStudent.id == studentID) {
+                        found = 1;
                         continue;  // Don't copy the deleted student
                     }
-                    fprintf(tempDB, "%d %s %s %d\n", currentStudent.id, currentStudent.firstName, currentStudent.lastName, currentStudent.grade);
+                    fprintf(tempDB, "%d %s %s %d\n", currentStudent.id, currentStudent.firstName, currentStudent lastName, currentStudent.grade);
                 }
 
                 fclose(tempDB);
@@ -244,10 +247,10 @@ int main(int argc, char *argv[]) {
                     return -1;
                 }
 
-                if (isDeleted) {
+                if (found) {
                     strcpy(sendBuffer, "Student deleted from the database");
                 } else {
-                    strcpy(sendBuffer, "Student with the given ID was not found");
+                    strcpy(sendBuffer, "Student with given ID not found");
                 }
 
                 sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
@@ -258,7 +261,7 @@ int main(int argc, char *argv[]) {
         printf("User's next menu choice: %d\n", ntohl(menuChoice));
 
         strcpy(sendBuffer, "Next menu choice received");
-        sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
+        sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, &clientSize);
     }
 
     fclose(studentDB);
