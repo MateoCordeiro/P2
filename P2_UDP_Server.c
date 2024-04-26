@@ -25,23 +25,13 @@ struct Student {
 };
 
 int main(int argc, char *argv[]) {
-    int sock,
-        addrLen,
-        clientSize,
-        menuChoice,
-        studentID, 
-        studentScore;
+    int sock, menuChoice, studentID, studentScore;
     
     struct sockaddr_in serverAddr, clientAddr;
-
-    char recvBuffer[2048], 
-        sendBuffer[1024], 
-        tempFirstName[10], 
-        tempLastName[10];
-
-    uint32_t receivedInt, 
-             fnameLength, 
-             lnameLength;
+    socklen_t clientSize = sizeof(clientAddr); // Correct data type for client size
+    
+    char recvBuffer[2048], sendBuffer[1024], tempFirstName[10], tempLastName[10];
+    uint32_t receivedInt, fnameLength, lnameLength;
 
     // Create a UDP socket
     sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -59,8 +49,6 @@ int main(int argc, char *argv[]) {
         close(sock);
         return -1;
     }
-
-    clientSize = sizeof(clientAddr);  // Size of client address struct
 
     // Create or open the student database file
     FILE *studentDB = fopen("students_db.txt", "a+");
@@ -150,8 +138,8 @@ int main(int argc, char *argv[]) {
 
                 // Search the student database for the given ID
                 fseek(studentDB, 0, SEEK_SET);
-                int studentFound = 0;
                 struct Student retrievedStudent;
+                int studentFound = 0;
 
                 while (fscanf(studentDB, "%d %s %s %d", &retrievedStudent.id, retrievedStudent.firstName, retrievedStudent.lastName, &retrievedStudent.grade) == 4) {
                     if (retrievedStudent.id == studentID) {
@@ -163,14 +151,13 @@ int main(int argc, char *argv[]) {
                 if (studentFound) {
                     sendto(sock, &retrievedStudent, sizeof(retrievedStudent), 0, (struct sockaddr *)&clientAddr, clientSize);
                 } else {
-                    struct Student emptyStudent;
-                    emptyStudent.id = -1;
-                    sendto(sock, &emptyStudent, sizeof(emptyStudent), 0, (struct sockaddr *)&clientAddr, clientSize);
+                    struct Student notFoundStudent;
+                    notFoundStudent.id = -1;
+                    sendto(sock, &notFoundStudent, sizeof(notFoundStudent), 0, (struct sockaddr *)&clientAddr, clientSize);
                 }
                 break;
 
             case 3:  // Display students with scores above a certain value
-                // Receive the score threshold
                 recvfrom(sock, &studentScore, sizeof(studentScore), 0, (struct sockaddr *)&clientAddr, &clientSize);
                 studentScore = ntohl(studentScore);
 
@@ -179,14 +166,13 @@ int main(int argc, char *argv[]) {
                 strcpy(sendBuffer, "Score received");
                 sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
 
-                // Send all students with scores above the threshold
-                struct Student currentStudent;
-                int threshold = studentScore;
                 int anyMatches = 0;
+                struct Student currentStudent;
 
                 fseek(studentDB, 0, SEEK_SET);
+
                 while (fscanf(studentDB, "%d %s %s %d", &currentStudent.id, currentStudent.firstName, currentStudent.lastName, &currentStudent.grade) == 4) {
-                    if (currentStudent.grade > threshold) {
+                    if (currentStudent.grade > studentScore) {
                         sendto(sock, &currentStudent, sizeof(currentStudent), 0, (struct sockaddr *)&clientAddr, clientSize);
                         anyMatches = 1;
                     }
@@ -195,7 +181,7 @@ int main(int argc, char *argv[]) {
                 if (!anyMatches) {
                     struct Student noMatch;
                     noMatch.id = -2;
-                    sendto(sock, &noMatch, sizeof(noMatch), 0, (struct sockaddr *)&client, clientSize);
+                    sendto(sock, &noMatch, sizeof(noMatch), 0, (struct sockaddr *)&clientAddr, clientSize);
                 }
 
                 break;
@@ -228,12 +214,12 @@ int main(int argc, char *argv[]) {
                     return -1;
                 }
 
-                // Remove student with the given ID from the database
                 fseek(studentDB, 0, SEEK_SET);
+                int targetID = studentID;
                 int isDeleted = 0;
 
                 while (fscanf(studentDB, "%d %s %s %d", &currentStudent.id, currentStudent.firstName, currentStudent.lastName, &currentStudent.grade) == 4) {
-                    if (currentStudent.id == studentID) {
+                    if (currentStudent.id == targetID) {
                         isDeleted = 1;
                         continue;  // Don't copy the deleted student
                     }
@@ -245,11 +231,15 @@ int main(int argc, char *argv[]) {
 
                 // Replace the old database with the updated one
                 remove("students_db.txt");
-                rename("temp_db.txt", "students_db.txt");
+                if (rename("temp_db.txt", "students_db.txt") != 0) {
+                    perror("Could not rename temp database");
+                    close(sock);
+                    return -1;
+                }
 
                 studentDB = fopen("students_db.txt", "a+");
                 if (!studentDB) {
-                    perror("Could not reopen student database");
+                    perror("Failed to reopen student database");
                     close(sock);
                     return -1;
                 }
@@ -257,14 +247,14 @@ int main(int argc, char *argv[]) {
                 if (isDeleted) {
                     strcpy(sendBuffer, "Student deleted from the database");
                 } else {
-                    strcpy(sendBuffer, "Student with given ID not found");
+                    strcpy(sendBuffer, "Student with the given ID was not found");
                 }
 
                 sendto(sock, sendBuffer, sizeof(sendBuffer), 0, (struct sockaddr *)&clientAddr, clientSize);
                 break;
         }
 
-        recvfrom(sock, &menuChoice, sizeof(menuChoice), 0, (struct sockaddr *)&clientAddr, clientSize);
+        recvfrom(sock, &menuChoice, sizeof(menuChoice), 0, (struct sockaddr *)&clientAddr, &clientSize);
         printf("User's next menu choice: %d\n", ntohl(menuChoice));
 
         strcpy(sendBuffer, "Next menu choice received");
@@ -276,4 +266,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
