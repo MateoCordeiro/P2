@@ -24,11 +24,11 @@ int s,
     cuserInput,
     ID, 
     cID,
-    score, 
-    cscore;
+    grade, 
+    cgrade;
 
-char Fname[10],
-    Lname[10],
+char FirstName[10],
+    LastName[10],
     msg[1024];
 
 struct sockaddr_in server;
@@ -38,9 +38,9 @@ socklen_t server_address_size_socklen = sizeof(server);
 struct Student {
     
     int ID;
-    char Fname[10];
-    char Lname[10];
-    int score;
+    char FirstName[10];
+    char LastName[10];
+    int grade;
 };
 
 int printMenu() {
@@ -48,15 +48,16 @@ int printMenu() {
     int userChoice;
 
     printf("\n\nStudent Database Options Menu\n");
-    printf("~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*\n");
-    printf("1. add(ID, Fname, Lname, score): this request adds new student information to the database.\n");
-    printf("2. display(ID): this request sends the ID of a student to the server, and the server returns the student's information to the client.\n");
-    printf("3. display(score): this request sends a score to the server, and the server returns the information of all students whose scores are above the sent score to the client.\n");
-    printf("4. display_all: this request displays the information of all the students currently in the database.\n");
-    printf("5. delete(ID): this request deletes the student entry with that ID from the database.\n");
-    printf("6. exit: this request terminates the program.\n\n");
+    printf("=============================\n");
+    printf("1. add: Adds a student to the database. (requires:ID, FirstName, LastName, grade)\n");
+    printf("2. delete(ID): Deletes a student from the database. (requires: ID)\n");
+    printf("3. display(ID): Displays info about a student, given their ID (requires: ID)\n");
+    printf("4. display(grade): Displays info about students with that grade. (requires: grade\n");
+    printf("5. display_all: Displays info about all students in the database. (requires: N/a)\n");
 
-    printf("Enter the number associated with the command you wish to perform: ");
+    printf("6. exit:\n\n");
+
+    printf("Select a number: ");
     scanf("%d", &userChoice);
 
     return userChoice;
@@ -75,29 +76,29 @@ void sendCommand(int userInput) {
         recvfrom(s, msg, sizeof(msg), 0, (struct sockaddr *)&server, &server_address_size);
         printf("%s\n", msg);
 
-        // user input Fname
-        printf("Enter Fname: ");
-        scanf("%s", &Fname);
-        uint32_t FnameSize = (strlen(Fname));
-        sendto(s, &FnameSize, sizeof(FnameSize), 0, (struct sockaddr *)&server, server_address_size);
-        sendto(s, Fname, strlen(Fname), 0, (struct sockaddr *)&server, server_address_size);
+        // user input FirstName
+        printf("Enter FirstName: ");
+        scanf("%s", &FirstName);
+        uint32_t FirstNameSize = (strlen(FirstName));
+        sendto(s, &FirstNameSize, sizeof(FirstNameSize), 0, (struct sockaddr *)&server, server_address_size);
+        sendto(s, FirstName, strlen(FirstName), 0, (struct sockaddr *)&server, server_address_size);
         recvfrom(s, msg, sizeof(msg), 0, (struct sockaddr *)&server, &server_address_size);
         printf("%s\n", msg);
 
-        // user input Lname
-        printf("Enter Lname: ");
-        scanf("%s", &Lname);
-        uint32_t LnameSize = (strlen(Lname));
-        sendto(s, &LnameSize, sizeof(LnameSize), 0, (struct sockaddr *)&server, server_address_size);
-        sendto(s, Lname, strlen(Lname), 0, (struct sockaddr *)&server, server_address_size);
+        // user input LastName
+        printf("Enter LastName: ");
+        scanf("%s", &LastName);
+        uint32_t LastNameSize = (strlen(LastName));
+        sendto(s, &LastNameSize, sizeof(LastNameSize), 0, (struct sockaddr *)&server, server_address_size);
+        sendto(s, LastName, strlen(LastName), 0, (struct sockaddr *)&server, server_address_size);
         recvfrom(s, msg, sizeof(msg), 0, (struct sockaddr *)&server, &server_address_size);
         printf("%s\n", msg);
 
-        // user input score
-        printf("Enter score: ");
-        scanf("%d", &score);
-        cscore = htonl(score);
-        sendto(s, &cscore, sizeof(cscore), 0, (struct sockaddr *)&server, server_address_size);
+        // user input grade
+        printf("Enter grade: ");
+        scanf("%d", &grade);
+        cgrade = htonl(grade);
+        sendto(s, &cgrade, sizeof(cgrade), 0, (struct sockaddr *)&server, server_address_size);
         recvfrom(s, msg, sizeof(msg), 0, (struct sockaddr *)&server, &server_address_size);
         printf("%s\n", msg);
 
@@ -108,6 +109,17 @@ void sendCommand(int userInput) {
     else if (userInput == 2)
     {
         // user input ID
+        printf("You chose delete, enter ID: ");
+        scanf("%d", &ID);
+        cID = htonl(ID);
+        sendto(s, &cID, sizeof(cID), 0, (struct sockaddr *)&server, server_address_size);
+        recvfrom(s, msg, sizeof(msg), 0, (struct sockaddr *)&server, &server_address_size);
+        recvfrom(s, msg, sizeof(msg), 0, (struct sockaddr *)&server, &server_address_size);
+        printf("%s\n", msg);
+    }
+    else if (userInput == 3)
+    {  
+       // user input ID
         printf("You chose display(ID), enter ID: ");
         scanf("%d", &ID);
         cID = htonl(ID);
@@ -122,20 +134,20 @@ void sendCommand(int userInput) {
         if (receivedStudent.ID != -1)
         {
             printf("Student Information:\n");
-            printf("%d %s %s %d\n", receivedStudent.ID, receivedStudent.Fname, receivedStudent.Lname, receivedStudent.score);
+            printf("%d %s %s %d\n", receivedStudent.ID, receivedStudent.FirstName, receivedStudent.LastName, receivedStudent.grade);
         }
         else
         {
             printf("Student with ID %d not found.\n", ID);
         }
     }
-    else if (userInput == 3)
-    {   
-        // user input score
-        printf("You chose display(score), enter score: ");
-        scanf("%d", &score);
-        cscore = htonl(score);
-        sendto(s, &cscore, sizeof(cscore), 0, (struct sockaddr *)&server, server_address_size);
+    else if (userInput == 4)
+    {
+       // user input grade
+        printf("You chose display(grade), enter grade: ");
+        scanf("%d", &grade);
+        cgrade = htonl(grade);
+        sendto(s, &cgrade, sizeof(cgrade), 0, (struct sockaddr *)&server, server_address_size);
         recvfrom(s, msg, sizeof(msg), 0, (struct sockaddr *)&server, &server_address_size);
         printf("%s\n", msg);     
 
@@ -145,19 +157,19 @@ void sendCommand(int userInput) {
 
         if (receivedStudent.ID == -2)
         {
-            printf("No students found with a score higher than %d\n", score);
+            printf("No students found with a grade higher than %d\n", grade);
         }
         else
         {
             printf("Student Information:\n");
             while (receivedStudent.ID != -1)
             {
-                printf("%d %s %s %d\n", receivedStudent.ID, receivedStudent.Fname, receivedStudent.Lname, receivedStudent.score);
+                printf("%d %s %s %d\n", receivedStudent.ID, receivedStudent.FirstName, receivedStudent.LastName, receivedStudent.grade);
                 recvfrom(s, &receivedStudent, sizeof(receivedStudent), 0, (struct sockaddr *)&server, &server_address_size_socklen);
             }
         }
     }
-    else if (userInput == 4)
+    else if (userInput == 5)
     {
         // receive and display
         struct Student receivedStudent;
@@ -165,20 +177,9 @@ void sendCommand(int userInput) {
         printf("Student Information:\n");
         while (receivedStudent.ID != -1)
         {
-            printf("%d %s %s %d\n", receivedStudent.ID, receivedStudent.Fname, receivedStudent.Lname, receivedStudent.score);
+            printf("%d %s %s %d\n", receivedStudent.ID, receivedStudent.FirstName, receivedStudent.LastName, receivedStudent.grade);
             recvfrom(s, &receivedStudent, sizeof(receivedStudent), 0, (struct sockaddr *)&server, &server_address_size);
         }
-    }
-    else if (userInput == 5)
-    {
-        // user input ID
-        printf("You chose delete, enter ID: ");
-        scanf("%d", &ID);
-        cID = htonl(ID);
-        sendto(s, &cID, sizeof(cID), 0, (struct sockaddr *)&server, server_address_size);
-        recvfrom(s, msg, sizeof(msg), 0, (struct sockaddr *)&server, &server_address_size);
-        recvfrom(s, msg, sizeof(msg), 0, (struct sockaddr *)&server, &server_address_size);
-        printf("%s\n", msg);
     }
     else
     {
@@ -192,7 +193,8 @@ int main(int argc, char **argv) {
     char buffer[2048];
     struct hostent *hostnm;
 
-    uint32_t num, cnum;
+    uint32_t num,
+        cnum;
 
 
     if ((s = socket(AF_INET, SOCK_DGRAM, 0))<0)
