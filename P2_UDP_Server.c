@@ -84,8 +84,7 @@ int main(int argc, char **argv){
     sendto(s, msg, sizeof(msg), 0, (struct sockaddr *)&client, sizeof(client));
 
     // perform command
-    while (userInput != 6) {
-        
+    while (userInput != 6) {  
         if (ntohl(userInput) == 1) { // add student to database
         
             // receive ID from the client
